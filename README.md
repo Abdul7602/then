@@ -6,6 +6,10 @@ Then is a full-stack AI companion built for clarity. Not a chatbot, not a search
 
 ---
 
+<p align="center">
+  <img src="images/then-portfolio-card.png" width="700">
+</p>
+
 ## 🗡️ What Then Does
 
 - **Thinks with you** — not at you. No bullet points, no therapy speak, no corporate warmth
