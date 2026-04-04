@@ -135,4 +135,4 @@ MIT — use it, build on it, make it your own.
 
 ---
 
-<p align="center">Built by <a href="https://github.com/Abdul7602">Abdul</a> · Powered by Anthropic</p>
+<p align="center">Built by <a href="https://github.com/Abdul7602">Abdul</a> · Powered by Claude (Anthropic)</p>
