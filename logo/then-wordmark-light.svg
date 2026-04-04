@@ -1,0 +1,20 @@
+<svg viewBox="0 0 560 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background white (for use on light surfaces) -->
+  <rect width="560" height="180" fill="#FFFFFF"/>
+
+  <!-- Cursor mark -->
+  <rect x="60" y="54" width="2.5" height="72" fill="#0A0A0A" rx="1.25"/>
+
+  <!-- Then wordmark -->
+  <text
+    x="85"
+    y="118"
+    fill="#0A0A0A"
+    font-family="Georgia, 'Palatino Linotype', Palatino, serif"
+    font-size="62"
+    font-weight="400"
+    letter-spacing="-2"
+  >Then</text>
+
+</svg>

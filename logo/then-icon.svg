@@ -1,0 +1,12 @@
+<svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- App icon background -->
+  <rect width="200" height="200" fill="#0A0A0A" rx="46"/>
+
+  <!-- Cursor mark, centered — the brand mark -->
+  <rect x="98.75" y="44" width="2.5" height="112" fill="white" rx="1.25"/>
+
+  <!-- Crossbar of T, forming a refined T from the cursor -->
+  <rect x="62" y="63" width="76" height="2" fill="white" rx="1" opacity="0.9"/>
+
+</svg>

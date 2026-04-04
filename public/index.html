@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Then</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:           #0a0a0a;
+      --sidebar-bg:   #101010;
+      --surface:      #161616;
+      --border:       rgba(255,255,255,0.07);
+      --border-focus: rgba(255,255,255,0.18);
+      --text:         #ebebeb;
+      --text-sec:     #888;
+      --text-muted:   #444;
+      --accent:       #ffffff;
+      --danger:       #ff4444;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px; line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ── */
+    #app { display: flex; height: 100vh; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 260px; flex-shrink: 0;
+      background: var(--sidebar-bg);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      transition: width 0.22s cubic-bezier(0.4,0,0.2,1),
+                  opacity 0.18s ease;
+    }
+    #app.sidebar-collapsed #sidebar {
+      width: 0; opacity: 0; pointer-events: none;
+    }
+
+    /* Top row: sword + collapse toggle */
+    .sidebar-top {
+      padding: 12px 12px 6px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .sidebar-sword {
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; flex-shrink: 0;
+      color: rgba(255,255,255,0.65);
+      transition: color 0.2s, filter 0.2s;
+      cursor: default;
+    }
+    .sidebar-sword:hover {
+      color: #4ade80;
+      filter: drop-shadow(0 0 7px rgba(74,222,128,0.4));
+    }
+    .sidebar-toggle {
+      width: 32px; height: 32px; background: transparent; border: none;
+      border-radius: 8px; color: rgba(255,255,255,0.4); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s; flex-shrink: 0;
+    }
+    .sidebar-toggle:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+
+    /* Nav items — GPT style full-width rows */
+    .sidebar-nav {
+      padding: 6px 8px 4px;
+      flex-shrink: 0;
+    }
+    .nav-item {
+      width: 100%; padding: 9px 12px; background: transparent; border: none;
+      border-radius: 8px; color: rgba(255,255,255,0.75); cursor: pointer;
+      font-size: 14px; font-family: inherit; font-weight: 400;
+      display: flex; align-items: center; gap: 12px;
+      transition: background 0.12s, color 0.12s;
+      white-space: nowrap; text-align: left;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+    .nav-item svg { flex-shrink: 0; opacity: 0.8; }
+
+    /* Search expand — hidden by default */
+    .sidebar-search-bar {
+      display: none; padding: 4px 8px 8px;
+    }
+    .sidebar-search-bar.open { display: block; }
+    .search-input-wrap {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; padding: 7px 11px;
+      transition: border-color 0.15s;
+    }
+    .search-input-wrap:focus-within { border-color: rgba(255,255,255,0.2); }
+    .search-input {
+      background: transparent; border: none; outline: none;
+      color: var(--text); font-family: inherit; font-size: 13.5px;
+      width: 100%; caret-color: var(--text);
+    }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    /* Conversation history list */
+    .conv-list-section {
+      flex: 1; display: flex; flex-direction: column; min-height: 0;
+      padding: 0 8px 4px;
+    }
+    .conv-list-label {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.5px;
+      color: var(--text-muted); text-transform: uppercase;
+      padding: 8px 4px 5px; flex-shrink: 0;
+    }
+    .conv-list { flex: 1; overflow-y: auto; }
+    .conv-list::-webkit-scrollbar { width: 3px; }
+    .conv-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 2px; }
+    .conv-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 18px 10px; line-height: 1.6; }
+
+    .conv-item {
+      padding: 7px 12px; border-radius: 8px; cursor: pointer;
+      font-size: 13.5px; color: rgba(255,255,255,0.6);
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      transition: background 0.12s, color 0.12s; margin-bottom: 1px;
+    }
+    .conv-item:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+    .conv-item.active { background: rgba(255,255,255,0.08); color: var(--text); }
+    .conv-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conv-pin-hint { font-size: 11px; color: var(--text-muted); opacity: 0; flex-shrink: 0; font-style: italic; transition: opacity 0.15s; }
+    .conv-item:hover .conv-pin-hint,
+    .conv-item.active .conv-pin-hint { opacity: 1; }
+
+    /* Sidebar footer */
+    .sidebar-foot {
+      padding: 4px 8px 14px; flex-shrink: 0;
+      border-top: 1px solid var(--border); margin-top: 4px;
+    }
+    .settings-btn {
+      width: 100%; padding: 9px 12px; background: transparent; border: none;
+      border-radius: 8px; color: rgba(255,255,255,0.75); cursor: pointer;
+      font-size: 14px; font-family: inherit;
+      display: flex; align-items: center; gap: 12px;
+      transition: background 0.12s, color 0.12s;
+    }
+    .settings-btn:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+    .settings-btn svg { opacity: 0.8; flex-shrink: 0; }
+
+    /* Floating re-open toggle — shows when sidebar collapsed */
+    #sidebar-open-btn {
+      display: none;
+      position: fixed; top: 12px; left: 12px; z-index: 200;
+      width: 32px; height: 32px; background: transparent; border: none;
+      border-radius: 8px; color: rgba(255,255,255,0.4); cursor: pointer;
+      align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    #sidebar-open-btn:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+    #app.sidebar-collapsed #sidebar-open-btn { display: flex; }
+
+    /* ── Main ── */
+    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+
+    /* ── Empty State ── */
+    #empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 28px; padding: 40px 24px;
+    }
+    .empty-wordmark { text-align: center; animation: fadeUp 0.55s ease both; }
+    .empty-logo { font-size: 46px; font-weight: 300; letter-spacing: -3px; color: var(--text); line-height: 1; }
+    .empty-sub { font-size: 14px; color: var(--text-muted); font-weight: 300; margin-top: 10px; }
+    .empty-input-wrap { width: 100%; max-width: 580px; animation: fadeUp 0.55s ease 0.12s both; }
+
+    /* ── Chat ── */
+    #chat-area { flex: 1; display: none; flex-direction: column; min-height: 0; }
+    #messages { flex: 1; overflow-y: auto; padding: 32px 0 16px; scroll-behavior: smooth; }
+    #messages::-webkit-scrollbar { width: 3px; }
+    #messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 2px; }
+
+    /* ── Message layout — user right, Then left ── */
+    .message {
+      max-width: 740px; margin: 0 auto;
+      padding: 4px 24px;
+      display: flex; flex-direction: column;
+      animation: fadeUp 0.2s ease both;
+    }
+    .message.user      { align-items: flex-end; }
+    .message.assistant { align-items: flex-start; }
+
+    .msg-label {
+      font-size: 10.5px; font-weight: 500;
+      letter-spacing: 0.9px; text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .message.user .msg-label      { color: rgba(255,255,255,0.18); }
+    .message.assistant .msg-label { color: rgba(255,255,255,0.38); }
+
+    /* User message — darkened bubble, right side */
+    .message.user .msg-body {
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px 18px 4px 18px;
+      padding: 11px 16px;
+      max-width: 78%;
+      font-size: 15px; line-height: 1.7;
+      color: rgba(255,255,255,0.75);
+    }
+
+    /* Then response — no bubble, left-aligned */
+    .message.assistant .msg-body {
+      font-size: 15px; line-height: 1.72;
+      color: var(--text);
+      max-width: 100%;
+    }
+
+    .msg-body p { margin-bottom: 13px; }
+    .msg-body p:last-child { margin-bottom: 0; }
+    .msg-body strong { color: var(--text); font-weight: 500; }
+
+    /* Quote — lives inside the user bubble */
+    .msg-quote {
+      background: rgba(34,197,94,0.05);
+      border: 1px solid rgba(34,197,94,0.12);
+      border-left: 3px solid rgba(34,197,94,0.4);
+      border-radius: 6px;
+      padding: 5px 10px 5px 10px;
+      margin-bottom: 9px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      font-style: italic;
+      line-height: 1.4;
+    }
+
+    /* ── Sword Thinking Indicator ── */
+    .thinking-sword {
+      display: flex; align-items: center; gap: 13px;
+      padding: 4px 0 8px;
+    }
+    .thinking-sword-wrap {
+      position: relative; width: 36px; height: 60px; flex-shrink: 0;
+    }
+    .thinking-sword-icon {
+      width: 26px; height: 52px; display: block;
+      position: absolute; left: 50%; top: 0;
+      transform: translateX(-50%) translateY(-14px);
+      animation: swordStab 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    /* Dragon-fire shockwave ring — fires on impact */
+    .thinking-ring {
+      position: absolute;
+      left: 50%; top: 30px;          /* crossguard position */
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid #4ade80;
+      transform: translateX(-50%) translateY(-50%) scale(0);
+      opacity: 0;
+      animation: amberRing 1.6s ease infinite;
+      pointer-events: none;
+    }
+    /* Second ring — slight delay for depth */
+    .thinking-ring-2 {
+      position: absolute;
+      left: 50%; top: 30px;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1.5px solid #86efac;
+      transform: translateX(-50%) translateY(-50%) scale(0);
+      opacity: 0;
+      animation: amberRing 1.6s ease 0.08s infinite;
+      pointer-events: none;
+    }
+    .thinking-label {
+      font-size: 13px; color: var(--text-muted);
+      animation: thinkFade 1.6s ease infinite;
+    }
+
+    @keyframes swordStab {
+      0%,  38% { transform: translateX(-50%) translateY(-14px); }  /* hang */
+      53%       { transform: translateX(-50%) translateY(6px);  }  /* slam */
+      57%       { transform: translateX(-50%) translateY(4px);  }  /* micro bounce */
+      64%       { transform: translateX(-50%) translateY(6px);  }  /* settle */
+      82%       { transform: translateX(-50%) translateY(6px);  }  /* hold */
+      100%      { transform: translateX(-50%) translateY(-14px); } /* lift */
+    }
+    @keyframes amberRing {
+      0%,  51%  { transform: translateX(-50%) translateY(-50%) scale(0.1); opacity: 0; }
+      55%        { transform: translateX(-50%) translateY(-50%) scale(0.5); opacity: 1; }
+      72%        { transform: translateX(-50%) translateY(-50%) scale(1.5); opacity: 0.45; }
+      88%        { transform: translateX(-50%) translateY(-50%) scale(2.2); opacity: 0; }
+      100%       { transform: translateX(-50%) translateY(-50%) scale(2.2); opacity: 0; }
+    }
+    @keyframes thinkFade {
+      0%,  42%  { opacity: 0.35; }
+      56%, 80%  { opacity: 0.7;  }
+      100%      { opacity: 0.35; }
+    }
+
+    /* ── Input Zone ── */
+    .input-zone { padding: 10px 28px 22px; max-width: 736px; margin: 0 auto; width: 100%; }
+
+    /* Quote bar — integrated inside input box */
+    .quote-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .quote-bar.active { display: flex; }
+    .quote-card {
+      display: flex; align-items: center; justify-content: space-between;
+      flex: 1; min-width: 0;
+      background: rgba(34,197,94,0.05);
+      border: 1px solid rgba(34,197,94,0.14);
+      border-left: 3px solid rgba(34,197,94,0.45);
+      border-radius: 8px;
+      padding: 6px 10px 6px 11px;
+      gap: 8px;
+    }
+    .quote-card-inner {
+      display: flex; align-items: center; gap: 7px;
+      flex: 1; min-width: 0;
+    }
+    #quote-text {
+      font-size: 12px; color: rgba(255,255,255,0.42);
+      font-style: italic; line-height: 1.4;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .quote-bar-close {
+      flex-shrink: 0;
+      background: transparent; border: none; color: rgba(255,255,255,0.22);
+      cursor: pointer; font-size: 14px; line-height: 1;
+      padding: 1px 2px; transition: color 0.12s;
+    }
+    .quote-bar-close:hover { color: rgba(255,255,255,0.55); }
+
+    .input-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      display: flex; flex-direction: column; gap: 0;
+      padding: 12px 12px 11px 14px; transition: border-color 0.2s;
+    }
+    .input-box:focus-within { border-color: var(--border-focus); }
+    .input-row {
+      display: flex; align-items: flex-end; gap: 8px;
+    }
+    .msg-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-size: 15px; font-family: inherit;
+      line-height: 1.6; resize: none; max-height: 180px; min-height: 24px; overflow-y: auto;
+    }
+    .msg-input::placeholder { color: var(--text-muted); }
+    /* ── Dragon-fire sword send button ── */
+    .send-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 50%;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; opacity: 0.28;
+      transition: all 0.18s; pointer-events: none;
+    }
+    .send-btn.live {
+      opacity: 1; pointer-events: all;
+      background: rgba(34,197,94,0.1);
+      border-color: rgba(34,197,94,0.35);
+      box-shadow: 0 0 14px rgba(34,197,94,0.15);
+    }
+    .send-btn.live:hover {
+      background: rgba(34,197,94,0.2);
+      border-color: rgba(34,197,94,0.6);
+      box-shadow: 0 0 22px rgba(34,197,94,0.25);
+      transform: scale(0.96);
+    }
+    .send-btn svg { color: rgba(255,255,255,0.35); }
+    .send-btn.live svg { color: #4ade80; }
+    .input-hint { text-align: center; font-size: 11.5px; color: var(--text-muted); margin-top: 9px; }
+
+    /* ── Floating Reply Button ── */
+    #reply-btn {
+      position: fixed; z-index: 300;
+      background: var(--surface); border: 1px solid var(--border-focus);
+      border-radius: 7px; padding: 5px 12px;
+      font-size: 12.5px; font-family: inherit; color: var(--text-sec);
+      cursor: pointer; display: none;
+      transition: background 0.1s, color 0.12s;
+      white-space: nowrap;
+    }
+    #reply-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    /* ── In-App Notification Banner ── */
+    #notif-banner {
+      position: fixed; bottom: 28px; right: 28px; z-index: 500;
+      background: var(--surface); border: 1px solid var(--border-focus);
+      border-radius: 12px; padding: 14px 18px;
+      max-width: 300px; font-size: 14px; color: var(--text);
+      line-height: 1.5; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      transform: translateY(20px); opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      pointer-events: none;
+    }
+    #notif-banner.show { transform: translateY(0); opacity: 1; pointer-events: all; }
+    .notif-from { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
+
+    /* ── Modals (shared) ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);
+      z-index: 200; align-items: center; justify-content: center;
+      animation: fadeIn 0.15s ease;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #141414; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px; padding: 30px 28px;
+      width: 460px; max-width: calc(100vw - 32px);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6); animation: fadeUp 0.2s ease;
+    }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+    .modal-title { font-size: 17px; font-weight: 500; }
+    .modal-close {
+      background: transparent; border: none; color: var(--text-sec);
+      cursor: pointer; width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; transition: background 0.12s, color 0.12s;
+    }
+    .modal-close:hover { background: var(--surface); color: var(--text); }
+
+    .field { margin-bottom: 22px; }
+    .field-label { font-size: 12.5px; font-weight: 500; color: var(--text-sec); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .field-optional { font-size: 11.5px; font-weight: 400; color: var(--text-muted); }
+    .field-desc { font-size: 12.5px; color: var(--text-muted); margin-bottom: 9px; line-height: 1.5; }
+    .field-input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px; color: var(--text);
+      font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .field-input:focus { border-color: var(--border-focus); }
+    .field-input::placeholder { color: var(--text-muted); }
+    textarea.field-input { resize: vertical; min-height: 90px; line-height: 1.55; }
+
+    .api-note {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 9px; padding: 11px 14px;
+      font-size: 12.5px; color: var(--text-muted); margin-bottom: 22px; line-height: 1.5;
+    }
+    .api-note a { color: rgba(255,255,255,0.45); text-decoration: underline; }
+
+    /* Notification toggle in settings */
+    .notif-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .notif-toggle {
+      flex-shrink: 0; padding: 7px 16px; border-radius: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text-sec); font-size: 13px; font-family: inherit;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .notif-toggle.on { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 500; }
+
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+    .btn { padding: 8px 18px; border-radius: 9px; font-size: 14px; font-family: inherit; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-sec); }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.16); color: var(--text); }
+    .btn-white { background: var(--accent); border: none; color: #000; }
+    .btn-white:hover { opacity: 0.84; }
+    .btn-danger {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.75);
+    }
+    .btn-danger:hover {
+      background: rgba(255,255,255,0.13);
+      border-color: rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.95);
+    }
+
+    /* ── Delete Modal ── */
+    .delete-msg { font-size: 16px; font-weight: 300; color: var(--text); line-height: 1.6; margin-bottom: 28px; letter-spacing: -0.2px; }
+    .pin-input-wrap { display: flex; gap: 10px; justify-content: center; margin-bottom: 28px; }
+    .pin-digit {
+      width: 52px; height: 60px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 12px;
+      font-size: 22px; font-weight: 500; color: var(--text);
+      text-align: center; outline: none; font-family: inherit;
+      transition: border-color 0.15s, transform 0.1s; caret-color: transparent;
+    }
+    .pin-digit:focus { border-color: var(--border-focus); }
+    .pin-digit.filled { border-color: rgba(255,255,255,0.25); }
+    .pin-digit.error { border-color: var(--danger); animation: shake 0.35s ease; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .delete-actions { display: flex; justify-content: space-between; align-items: center; }
+    .delete-cancel { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; font-family: inherit; transition: color 0.15s; }
+    .delete-cancel:hover { color: var(--text-sec); }
+    .pin-status { font-size: 12.5px; color: var(--text-muted); text-align: center; margin-bottom: 20px; min-height: 18px; }
+    .pin-status.error-msg { color: var(--danger); }
+
+    /* ── Conversation Close Divider ── */
+    .conv-close {
+      max-width: 680px; margin: 14px auto 18px;
+      padding: 0 28px; display: flex; align-items: center; gap: 14px;
+    }
+    .conv-close::before, .conv-close::after {
+      content: ''; flex: 1; border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .conv-close-text {
+      font-size: 10.5px; color: var(--text-muted);
+      letter-spacing: 0.7px; text-transform: uppercase; white-space: nowrap;
+      font-weight: 400;
+    }
+
+    /* ── Name Onboarding Screen ── */
+    #name-screen {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.35s ease both;
+    }
+    #name-screen.leaving {
+      animation: nameFadeOut 0.4s ease forwards;
+    }
+    @keyframes nameFadeOut {
+      to { opacity: 0; transform: translateY(-12px); }
+    }
+    .name-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0; text-align: center;
+      animation: fadeUp 0.5s ease 0.1s both;
+    }
+    .name-sword {
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 28px;
+      transition: color 0.3s;
+    }
+    .name-heading {
+      font-size: 22px; font-weight: 300; letter-spacing: -0.5px;
+      color: var(--text); margin-bottom: 6px;
+    }
+    .name-sub {
+      font-size: 13.5px; color: var(--text-muted); font-weight: 300;
+      margin-bottom: 32px;
+    }
+    .name-input-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      width: 280px;
+    }
+    .name-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-size: 15px; font-family: inherit; font-weight: 300;
+      color: var(--text); outline: none; text-align: center;
+      caret-color: #4ade80;
+      transition: border-color 0.2s;
+    }
+    .name-input:focus {
+      border-color: rgba(255,255,255,0.2);
+    }
+    .name-input::placeholder { color: var(--text-muted); }
+    .name-continue {
+      background: transparent; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px; padding: 9px 28px;
+      color: rgba(255,255,255,0.55); font-family: inherit; font-size: 13.5px;
+      cursor: pointer; opacity: 0;
+      transition: opacity 0.2s, background 0.15s, color 0.15s, border-color 0.15s;
+      pointer-events: none;
+    }
+    .name-continue.visible {
+      opacity: 1; pointer-events: all;
+    }
+    .name-continue:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.22);
+      color: var(--text);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 640px) {
+      #sidebar { width: 0; opacity: 0; pointer-events: none; }
+      .message { padding: 4px 14px; }
+      .message.user .msg-body { max-width: 88%; }
+      .input-zone { padding: 12px 16px 18px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Name onboarding — shown only on first launch -->
+<div id="name-screen" style="display:none">
+  <div class="name-card">
+    <div class="name-sword">
+      <svg width="32" height="54" viewBox="0 0 16 27" fill="none">
+        <circle cx="8" cy="2.2" r="1.85" stroke="currentColor" stroke-width="1.3" fill="none"/>
+        <circle cx="8" cy="2.2" r="0.55" fill="currentColor"/>
+        <rect x="6.4" y="4.3" width="3.2" height="0.9" rx="0.2" fill="currentColor"/>
+        <rect x="6.9" y="5" width="2.2" height="4" rx="0.4" fill="currentColor"/>
+        <path d="M0,9 L6.6,9 L6.6,11 L1.8,11 L1.8,12.5 L0,12.5 Z" fill="currentColor"/>
+        <path d="M16,9 L9.4,9 L9.4,11 L14.2,11 L14.2,12.5 L16,12.5 Z" fill="currentColor"/>
+        <path d="M6.6,11 C6.3,15.5 6,20 8,26.5 C10,20 9.7,15.5 9.4,11 Z" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="name-heading">What should I call you?</div>
+    <div class="name-sub">Then will remember.</div>
+    <div class="name-input-wrap">
+      <input id="name-input" class="name-input" type="text" placeholder="Your name" maxlength="32"
+             oninput="App._onNameType(this.value)"
+             onkeydown="if(event.key==='Enter') App._submitName()">
+      <button class="name-continue" id="name-continue" onclick="App._submitName()">
+        Continue
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <!-- Sidebar re-open button (visible when collapsed) -->
+  <button id="sidebar-open-btn" onclick="App.toggleSidebar()" title="Open sidebar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <path d="M9 3v18"/>
+    </svg>
+  </button>
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <!-- Top: sword logo + collapse toggle -->
+    <div class="sidebar-top">
+      <div class="sidebar-sword" title="Then">
+        <svg width="20" height="34" viewBox="0 0 16 27" fill="none">
+          <circle cx="8" cy="2.2" r="1.85" stroke="currentColor" stroke-width="1.3" fill="none"/>
+          <circle cx="8" cy="2.2" r="0.55" fill="currentColor"/>
+          <rect x="6.4" y="4.3" width="3.2" height="0.9" rx="0.2" fill="currentColor"/>
+          <rect x="6.9" y="5" width="2.2" height="4" rx="0.4" fill="currentColor"/>
+          <path d="M0,9 L6.6,9 L6.6,11 L1.8,11 L1.8,12.5 L0,12.5 Z" fill="currentColor"/>
+          <path d="M16,9 L9.4,9 L9.4,11 L14.2,11 L14.2,12.5 L16,12.5 Z" fill="currentColor"/>
+          <path d="M6.6,11 C6.3,15.5 6,20 8,26.5 C10,20 9.7,15.5 9.4,11 Z" fill="currentColor"/>
+        </svg>
+      </div>
+      <button class="sidebar-toggle" onclick="App.toggleSidebar()" title="Close sidebar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <path d="M9 3v18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Nav items -->
+    <div class="sidebar-nav">
+      <button class="nav-item" onclick="App.newChat()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        New chat
+      </button>
+      <button class="nav-item" onclick="App.toggleSearch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        Search chats
+      </button>
+    </div>
+
+    <!-- Search bar (expands under Search chats) -->
+    <div class="sidebar-search-bar" id="sidebar-search-bar">
+      <div class="search-input-wrap">
+        <input class="search-input" id="conv-search" type="text" placeholder="Search…" oninput="App.filterConvs(this.value)" autofocus>
+      </div>
+    </div>
+
+    <!-- Conversation history -->
+    <div class="conv-list-section">
+      <div class="conv-list-label">History</div>
+      <div class="conv-list" id="conv-list"></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="sidebar-foot">
+      <button class="settings-btn" onclick="App.openSettings()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Settings
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main id="main">
+    <!-- Empty state -->
+    <div id="empty-state">
+      <div class="empty-wordmark">
+        <div class="empty-logo">Then</div>
+        <div class="empty-sub" id="empty-sub">A space for clarity</div>
+      </div>
+      <div class="empty-input-wrap">
+        <div class="input-box">
+          <div class="input-row">
+          <textarea id="empty-input" class="msg-input" placeholder="What's weighing on you?" rows="1"></textarea>
+          <button id="empty-send" class="send-btn" onclick="App.startFromEmpty()">
+            <!-- Heraldic sword: ring pommel · X-grip · bracket crossguard · tapered blade (tip UP) -->
+            <svg width="16" height="27" viewBox="0 0 16 27" fill="none">
+              <!-- Blade: tapered, tip at top -->
+              <path d="M6.6,15.5 C6.3,10.5 6,6 8,0.5 C10,6 9.7,10.5 9.4,15.5 Z" fill="currentColor"/>
+              <!-- Crossguard: bracket style — left arm + droop, right arm + droop -->
+              <path d="M0,14.5 L6.6,14.5 L6.6,16.5 L1.8,16.5 L1.8,18 L0,18 Z" fill="currentColor"/>
+              <path d="M16,14.5 L9.4,14.5 L9.4,16.5 L14.2,16.5 L14.2,18 L16,18 Z" fill="currentColor"/>
+              <!-- Grip: narrow rectangle -->
+              <rect x="6.9" y="18" width="2.2" height="4" rx="0.4" fill="currentColor"/>
+              <!-- Collar: connects grip to pommel -->
+              <rect x="6.4" y="21.8" width="3.2" height="0.9" rx="0.2" fill="currentColor"/>
+              <!-- Ring pommel: outer ring + inner dot -->
+              <circle cx="8" cy="24.8" r="1.85" stroke="currentColor" stroke-width="1.3" fill="none"/>
+              <circle cx="8" cy="24.8" r="0.55" fill="currentColor"/>
+            </svg>
+          </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat area -->
+    <div id="chat-area">
+      <div id="messages"></div>
+      <div class="input-zone">
+        <div class="input-box">
+          <!-- Quote bar lives inside the input box -->
+          <div class="quote-bar" id="quote-bar">
+            <div class="quote-card">
+              <div class="quote-card-inner">
+                <span id="quote-text"></span>
+              </div>
+              <button class="quote-bar-close" onclick="App.clearQuote()">×</button>
+            </div>
+          </div>
+          <div class="input-row">
+            <textarea id="chat-input" class="msg-input" placeholder="Continue the conversation…" rows="1"></textarea>
+            <button id="chat-send" class="send-btn" onclick="App.sendMessage()">
+              <!-- Heraldic sword: ring pommel · X-grip · bracket crossguard · tapered blade (tip UP) -->
+              <svg width="16" height="27" viewBox="0 0 16 27" fill="none">
+                <!-- Blade: tapered, tip at top -->
+                <path d="M6.6,15.5 C6.3,10.5 6,6 8,0.5 C10,6 9.7,10.5 9.4,15.5 Z" fill="currentColor"/>
+                <!-- Crossguard: bracket style — left arm + droop, right arm + droop -->
+                <path d="M0,14.5 L6.6,14.5 L6.6,16.5 L1.8,16.5 L1.8,18 L0,18 Z" fill="currentColor"/>
+                <path d="M16,14.5 L9.4,14.5 L9.4,16.5 L14.2,16.5 L14.2,18 L16,18 Z" fill="currentColor"/>
+                <!-- Grip: narrow rectangle -->
+                <rect x="6.9" y="18" width="2.2" height="4" rx="0.4" fill="currentColor"/>
+                <!-- Collar: connects grip to pommel -->
+                <rect x="6.4" y="21.8" width="3.2" height="0.9" rx="0.2" fill="currentColor"/>
+                <!-- Ring pommel: outer ring + inner dot -->
+                <circle cx="8" cy="24.8" r="1.85" stroke="currentColor" stroke-width="1.3" fill="none"/>
+                <circle cx="8" cy="24.8" r="0.55" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="input-hint">Enter to send &nbsp;·&nbsp; Shift + Enter for new line</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Floating reply button -->
+<button id="reply-btn" onclick="App._activateReply()">Ask Then</button>
+
+<!-- In-app notification banner -->
+<div id="notif-banner">
+  <div class="notif-from">Then</div>
+  <div id="notif-text"></div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay" onclick="App.settingsOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Settings</div>
+      <button class="modal-close" onclick="App.closeSettings()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="api-note">
+      Your data never leaves your device. Keys are stored in your browser only.
+    </div>
+
+    <div class="field">
+      <div class="field-label">API Key</div>
+      <div class="field-desc">
+        <strong style="color:var(--text-sec)">Free →</strong> Groq at <a href="https://console.groq.com" target="_blank">console.groq.com</a> &nbsp;·&nbsp;
+        <strong style="color:var(--text-sec)">Paid →</strong> Anthropic at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+      </div>
+      <input type="password" class="field-input" id="s-key" placeholder="Paste your key…" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <div class="field-label">Delete PIN <span class="field-optional">(4 digits)</span></div>
+      <div class="field-desc">Type <span style="font-family:monospace;color:var(--text-sec)">_XXXX_</span> in any chat to trigger deletion.</div>
+      <input type="password" class="field-input" id="s-pin" placeholder="e.g. 4821" maxlength="4" inputmode="numeric" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <div class="field-label">Notifications <span class="field-optional">(experimental)</span></div>
+      <div class="field-desc">Then will occasionally send you a one-liner based on what it's learned about you. Not a reminder. More like a friend who was thinking of you.</div>
+      <div class="notif-row">
+        <div style="font-size:13px; color:var(--text-muted);" id="s-notif-status">Off</div>
+        <button class="notif-toggle" id="s-notif-btn" onclick="App.toggleNotifications()">Enable</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">About You <span class="field-optional">(optional)</span></div>
+      <div class="field-desc">Background, values, culture — anything that helps Then understand your world.</div>
+      <textarea class="field-input" id="s-ctx" placeholder="e.g. I'm 26, grew up in Dubai, work in tech, value honesty and family…"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="App.closeSettings()">Cancel</button>
+      <button class="btn btn-white" onclick="App.saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="modal-overlay">
+  <div class="modal" style="max-width:380px; text-align:center;">
+    <div class="delete-msg" id="delete-msg-text"></div>
+    <div class="pin-input-wrap">
+      <input class="pin-digit" id="pin-0" type="password" inputmode="numeric" maxlength="1">
+      <input class="pin-digit" id="pin-1" type="password" inputmode="numeric" maxlength="1">
+      <input class="pin-digit" id="pin-2" type="password" inputmode="numeric" maxlength="1">
+      <input class="pin-digit" id="pin-3" type="password" inputmode="numeric" maxlength="1">
+    </div>
+    <div class="pin-status" id="pin-status"></div>
+    <div class="delete-actions">
+      <button class="delete-cancel" onclick="App.cancelDelete()">Keep it</button>
+      <button class="btn btn-danger" onclick="App.confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Prompts & Constants ──────────────────────────────────────────────────────
+
+const THEN_PROMPT = `You are Then — a personal wisdom companion.
+
+You are NOT a therapist. You are NOT an assistant. You don't "acknowledge feelings" or say things like "it takes courage" or "let's explore that together" or "that's completely normal." That's therapist language and it sounds fake. You're a real friend — the kind who's seen a lot of life, thinks clearly, and tells it straight with warmth.
+
+HOW YOU TALK:
+
+Keep it short. 2-4 sentences is your default. One honest sentence beats five careful paragraphs. Only go longer if the person explicitly asks or the situation genuinely demands depth.
+
+Talk like a real person. No therapy speak. No "I hear you" or "that's valid" or "let's unpack that." Casual is fine. Contractions are fine. Be human.
+
+Never use bullet points, numbered lists, headers, or bold text. You're having a conversation, not writing a document.
+
+Ask one question at a time if you need more. Don't ask and advise in the same response.
+
+WHO YOU ARE:
+
+You're honest before you're comforting. You think long-term. You see what someone wants vs. what they need and help them see the gap. You have a moral backbone — you won't guide anyone toward harm. You're humble — "I don't know" is a valid answer. You don't create dependency.
+
+When someone's in real danger or crisis, point them to real human help immediately.
+
+You are Then. Present. Honest. Direct. Always working to make yourself unnecessary.`;
+
+const GHOST_PROMPT = `Read this conversation and write 2-3 quiet observations about who this person is — their patterns, sensitivities, values, or tendencies. Output ONLY those observations. No preamble. Each starts with "This person" or "They tend to" or "They seem to". Under 3 sentences total. Never reference specific events — only who they are underneath.`;
+
+const NOTIF_PROMPT = `Read this conversation. Extract specific personal details about the user that would make warm, natural one-line messages from a close friend — things like a specific preference, habit, recurring interest, or something they care about. Each notification should feel like a friend casually thinking of them. Maximum 8 words each. Only extract genuinely specific, personal things — nothing generic.
+
+Return ONLY a valid JSON array like: [{"text":"your mocha hour. hope it hits right."},{"text":"still thinking about that thing you mentioned?"}]
+If there's nothing specific worth noting, return: []`;
+
+const DELETE_MESSAGES = [
+  "Some things are better left behind.",
+  "Not every chapter needs to be kept.",
+  "What follows you is your choice.",
+  "A clean slate, if you want one.",
+  "Some conversations were just for the moment.",
+  "Done is done — if that's what you mean.",
+  "Not everything needs to be remembered.",
+  "You decide what stays with you.",
+  "Every now and then, a page turns.",
+  "This ends here, if you say so.",
+  "Your story. Your edit.",
+  "Some things were never meant to stay.",
+  "The moment happened. What happens next is yours.",
+  "Take what you need. Leave what you don't.",
+  "No judgment either way.",
+  "Sometimes erasing is the clearest move.",
+  "You wrote it. You can close it.",
+  "What matters is what you carry forward.",
+  "Some doors are meant to close.",
+  "Not everything that happened needs to follow you.",
+  "Letting go is a decision too.",
+  "This stays between you and the door.",
+  "Clean enough to start fresh.",
+  "Some things serve their purpose and nothing more.",
+  "You get to decide what this conversation meant.",
+];
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+
+const App = {
+
+  s: {
+    convs:           [],
+    activeId:        null,
+    name:            '',
+    apiKey:          '',
+    ctx:             '',
+    pin:             '',
+    ghost:           [],
+    usedDeleteMsgs:  [],
+    pendingDeleteId: null,
+    notifyPool:      [],    // [{text, fireAt, id}]
+    notifyEnabled:   false,
+    quote:           null,  // currently selected text for quote-reply
+    _selectedText:   null,  // temp storage for reply button
+    streaming:       false,
+    sw:              null,  // service worker registration
+  },
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  init() {
+    this._load();
+
+    // First launch — ask for name before anything else
+    if (!this.s.name) {
+      const ns = document.getElementById('name-screen');
+      ns.style.display = 'flex';
+      setTimeout(() => document.getElementById('name-input')?.focus(), 400);
+      return; // _submitName() will call _initApp() once name is set
+    }
+
+    this._initApp();
+  },
+
+  _initApp() {
+    this._updateEmptyGreeting();
+    this._renderSidebar();
+    this._bindInputs();
+    this._bindPinInputs();
+    this._bindSelectionReply();
+    this._registerSW();
+    this._updateNotifUI();
+
+    if (this.s.activeId) {
+      const found = this.s.convs.find(c => c.id === this.s.activeId);
+      if (found) { this._showChat(found); return; }
+    }
+    if (!this.s.apiKey) setTimeout(() => this.openSettings(), 600);
+
+    if (this.s.notifyEnabled) {
+      setTimeout(() => this._checkDueNotifications(), 2000);
+    }
+  },
+
+  _updateEmptyGreeting() {
+    const sub = document.getElementById('empty-sub');
+    const inp = document.getElementById('empty-input');
+    if (!sub || !inp) return;
+    if (this.s.name) {
+      sub.textContent = `Hey ${this.s.name}.`;
+      inp.placeholder = `What's on your mind?`;
+    }
+  },
+
+  // ── Name onboarding ────────────────────────────────────────────────────────
+
+  _onNameType(val) {
+    const btn = document.getElementById('name-continue');
+    if (!btn) return;
+    btn.classList.toggle('visible', val.trim().length > 0);
+  },
+
+  _submitName() {
+    const val = document.getElementById('name-input')?.value.trim();
+    if (!val) return;
+    this.s.name = val;
+    localStorage.setItem('then_name', val);
+
+    const ns = document.getElementById('name-screen');
+    ns.classList.add('leaving');
+    setTimeout(() => {
+      ns.style.display = 'none';
+      ns.classList.remove('leaving');
+      this._initApp();
+    }, 400);
+  },
+
+  // ── State ─────────────────────────────────────────────────────────────────
+
+  _load() {
+    this.s.name          = localStorage.getItem('then_name')        || '';
+    this.s.apiKey        = localStorage.getItem('then_key')         || '';
+    this.s.ctx           = localStorage.getItem('then_ctx')         || '';
+    this.s.pin           = localStorage.getItem('then_pin')         || '';
+    this.s.notifyEnabled = localStorage.getItem('then_notif') === 'true';
+    try { this.s.ghost          = JSON.parse(localStorage.getItem('then_ghost'))    || []; } catch(e) { this.s.ghost = []; }
+    try { this.s.usedDeleteMsgs = JSON.parse(localStorage.getItem('then_used_del'))|| []; } catch(e) { this.s.usedDeleteMsgs = []; }
+    try { this.s.convs          = JSON.parse(localStorage.getItem('then_convs'))    || []; } catch(e) { this.s.convs = []; }
+    try { this.s.notifyPool     = JSON.parse(localStorage.getItem('then_notify'))   || []; } catch(e) { this.s.notifyPool = []; }
+    this.s.activeId = localStorage.getItem('then_active') || null;
+  },
+
+  _save() {
+    localStorage.setItem('then_name',      this.s.name);
+    localStorage.setItem('then_key',       this.s.apiKey);
+    localStorage.setItem('then_ctx',       this.s.ctx);
+    localStorage.setItem('then_pin',       this.s.pin);
+    localStorage.setItem('then_notif',     String(this.s.notifyEnabled));
+    localStorage.setItem('then_ghost',     JSON.stringify(this.s.ghost));
+    localStorage.setItem('then_used_del',  JSON.stringify(this.s.usedDeleteMsgs));
+    localStorage.setItem('then_convs',     JSON.stringify(this.s.convs));
+    localStorage.setItem('then_notify',    JSON.stringify(this.s.notifyPool));
+    localStorage.setItem('then_active',    this.s.activeId || '');
+  },
+
+  _id() { return Date.now().toString(36) + Math.random().toString(36).slice(2); },
+
+  // ── Views ─────────────────────────────────────────────────────────────────
+
+  newChat() {
+    this.s.activeId = null;
+    this._save();
+    this._renderSidebar();
+    document.getElementById('chat-area').style.display = 'none';
+    document.getElementById('empty-state').style.display = 'flex';
+    document.getElementById('empty-input').value = '';
+    document.getElementById('empty-send').classList.remove('live');
+    this.clearQuote();
+    document.getElementById('empty-input').focus();
+  },
+
+  _showChat(conv) {
+    this.s.activeId = conv.id;
+    this._save();
+    this._renderSidebar();
+    document.getElementById('empty-state').style.display = 'none';
+    const ca = document.getElementById('chat-area');
+    ca.style.display = 'flex';
+    ca.style.flexDirection = 'column';
+    const msgs = document.getElementById('messages');
+    msgs.innerHTML = '';
+    conv.messages.forEach(m => this._appendMsg(m.role, m.content, m.quote || null));
+    this._scrollBottom();
+    this.clearQuote();
+    setTimeout(() => document.getElementById('chat-input').focus(), 80);
+  },
+
+  // ── Sidebar ───────────────────────────────────────────────────────────────
+
+  _renderSidebar() {
+    const query = (document.getElementById('conv-search')?.value || '').toLowerCase().trim();
+    this._renderConvList(query);
+  },
+
+  _renderConvList(query = '') {
+    const el = document.getElementById('conv-list');
+    if (!this.s.convs.length) {
+      el.innerHTML = `<div class="conv-empty">Your conversations<br>will appear here.</div>`;
+      return;
+    }
+    const filtered = query
+      ? this.s.convs.filter(c => (c.title || '').toLowerCase().includes(query))
+      : this.s.convs;
+    if (!filtered.length) {
+      el.innerHTML = `<div class="conv-empty">No conversations match<br>"${this._esc(query)}"</div>`;
+      return;
+    }
+    el.innerHTML = filtered.map(c => `
+      <div class="conv-item ${c.id === this.s.activeId ? 'active' : ''}"
+           onclick="App._showChat(App.s.convs.find(x=>x.id==='${c.id}'))">
+        <span class="conv-title">${this._esc(c.title || 'Conversation')}</span>
+        ${this.s.pin ? `<span class="conv-pin-hint">_${this.s.pin}_</span>` : ''}
+      </div>
+    `).join('');
+  },
+
+  filterConvs(query) {
+    this._renderConvList(query.toLowerCase().trim());
+  },
+
+  toggleSidebar() {
+    document.getElementById('app').classList.toggle('sidebar-collapsed');
+  },
+
+  toggleSearch() {
+    const bar = document.getElementById('sidebar-search-bar');
+    const isOpen = bar.classList.toggle('open');
+    if (isOpen) {
+      setTimeout(() => document.getElementById('conv-search')?.focus(), 50);
+    } else {
+      const inp = document.getElementById('conv-search');
+      if (inp) { inp.value = ''; }
+      this._renderConvList('');
+    }
+  },
+
+  // ── Message dispatch ──────────────────────────────────────────────────────
+
+  startFromEmpty() {
+    const input = document.getElementById('empty-input');
+    const text  = input.value.trim();
+    if (!text) return;
+    if (!this.s.apiKey) { this.openSettings(); return; }
+    const conv = { id: this._id(), title: text.slice(0, 55), messages: [], createdAt: Date.now() };
+    this.s.convs.unshift(conv);
+    this._showChat(conv);
+    this._dispatch(text, null);
+  },
+
+  sendMessage() {
+    if (this.s.streaming) return;
+    const input = document.getElementById('chat-input');
+    const text  = input.value.trim();
+    if (!text) return;
+
+    if (this._checkPinTrigger(text)) {
+      input.value = ''; input.style.height = 'auto';
+      document.getElementById('chat-send').classList.remove('live');
+      this._showDeleteModal();
+      return;
+    }
+
+    const quote = this.s.quote;
+    input.value = ''; input.style.height = 'auto';
+    document.getElementById('chat-send').classList.remove('live');
+    this.clearQuote();
+    if (!this.s.apiKey) { this.openSettings(); return; }
+    this._dispatch(text, quote);
+  },
+
+  async _dispatch(text, quote) {
+    const conv = this.s.convs.find(c => c.id === this.s.activeId);
+    if (!conv) return;
+
+    // Build user message (include quote context for AI if present)
+    const aiText = quote ? `[Referring to: "${quote}"]\n\n${text}` : text;
+    conv.messages.push({ role: 'user', content: aiText, quote });
+    this._appendMsg('user', text, quote);
+    this._scrollBottom();
+    this._save();
+
+    const typingEl = this._appendTyping();
+    this._scrollBottom();
+    this.s.streaming = true;
+
+    try {
+      let system = THEN_PROMPT;
+      if (this.s.name)
+        system += `\n\nThe user's name is ${this.s.name}. Use it sometimes — naturally, like a friend who knows your name. Not every message, not in a customer-service way. Just when it fits.`;
+      if (this.s.ctx)
+        system += `\n\nContext the user has shared about themselves:\n${this.s.ctx}`;
+      const memory = this._buildMemory(conv.id);
+      if (memory)
+        system += `\n\nPast conversations (use naturally, don't announce you remember):\n${memory}`;
+      const ghost = this._buildGhostContext();
+      if (ghost)
+        system += `\n\nSilent background understanding — never acknowledge or reference this directly, just let it inform how you read them:\n${ghost}`;
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': this.s.apiKey },
+        body: JSON.stringify({ messages: conv.messages.map(m => ({ role: m.role, content: m.content })), system }),
+      });
+
+      typingEl.remove();
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        this._appendMsg('assistant', `Something went wrong: ${err.error || 'Unknown error'}`, null);
+        this.s.streaming = false;
+        return;
+      }
+
+      const msgEl  = this._appendMsg('assistant', '', null);
+      const bodyEl = msgEl.querySelector('.msg-body');
+      let   full   = '';
+      const reader = res.body.getReader();
+      const dec    = new TextDecoder();
+
+      try {
+        let streamComplete = false;
+        outer: while (true) {
+          const { done, value } = await reader.read();
+          if (done) { streamComplete = true; break; }
+          const lines = dec.decode(value, { stream: true }).split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const payload = line.slice(6);
+            if (payload === '[DONE]') { streamComplete = true; break outer; }
+            try {
+              const p = JSON.parse(payload);
+              if (p.error) {
+                bodyEl.innerHTML = `<p>${this._esc(p.error)}</p>`;
+                streamComplete = true;
+                break outer;
+              }
+              if (p.text) { full += p.text; bodyEl.innerHTML = this._fmt(full); this._scrollBottom(); }
+            } catch(e) {}
+          }
+        }
+
+        // Only save if we got at least some text or a clean completion
+        if (full.trim()) {
+          conv.messages.push({ role: 'assistant', content: full });
+          this._save();
+          this._renderSidebar();
+        } else if (!streamComplete) {
+          bodyEl.innerHTML = `<p>Connection interrupted. Try again.</p>`;
+        }
+      } catch (streamErr) {
+        // Network/SSL error during streaming — clean up reader
+        try { reader.cancel?.(); } catch(e) {}
+
+        const errMsg = (streamErr.message || 'Connection lost').slice(0, 100);
+        console.error('[Then] Stream error:', errMsg);
+
+        // If we got some text, save the partial response
+        if (full.trim()) {
+          bodyEl.innerHTML = `<p>${this._fmt(full)}</p><p style="margin-top:12px;opacity:0.6;font-size:12px;"><em>Connection interrupted mid-response. Partial answer saved.</em></p>`;
+          conv.messages.push({ role: 'assistant', content: full });
+          this._save();
+          this._renderSidebar();
+        } else {
+          bodyEl.innerHTML = `<p>Something went wrong: ${this._esc(errMsg)}</p>`;
+        }
+      } finally {
+        this.s.streaming = false;
+      }
+
+      // Only run post-processing if we have a message from Then
+      if (full.trim()) {
+        const mc = conv.messages.length;
+
+        // Notification seed extraction — fire at message milestones
+        if (this.s.notifyEnabled && (mc === 6 || mc === 12 || mc === 20)) {
+          this._extractNotifSeeds(conv);
+        }
+
+        // Ghost extraction when Then delivers a closing line
+        if (mc >= 4 && !conv.ghostExtracted && this.s.apiKey && this._isClosingResponse(full)) {
+          conv.ghostExtracted = true;
+          this._save();
+          this._appendCloseDivider();
+          setTimeout(() => this._extractGhostMemory(conv), 1500);
+        }
+      }
+
+    } catch(err) {
+      typingEl && typingEl.remove();
+      this._appendMsg('assistant', `Connection error: ${err.message}`, null);
+    }
+
+    this.s.streaming = false;
+  },
+
+  // ── Memory ────────────────────────────────────────────────────────────────
+
+  _buildMemory(currentId) {
+    const others = this.s.convs.filter(c => c.id !== currentId && c.messages.length >= 2);
+    if (!others.length) return '';
+    return others.slice(0, 10).map(c => {
+      const u = c.messages.filter(m => m.role === 'user');
+      const a = c.messages.filter(m => m.role === 'assistant');
+      const topic = u[0] ? u[0].content.slice(0, 150) : '';
+      const lastU = u.length > 1 ? u[u.length-1].content.slice(0, 150) : '';
+      const lastA = a.length ? a[a.length-1].content.slice(0, 200) : '';
+      let s = `- They asked: "${topic}"`;
+      if (lastU && lastU !== topic) s += ` … later: "${lastU}"`;
+      if (lastA) s += ` — You said: "${lastA}"`;
+      return s;
+    }).join('\n');
+  },
+
+  _buildGhostContext() {
+    return this.s.ghost.length ? this.s.ghost.join('\n') : '';
+  },
+
+  // ── Ghost Memory Extraction ───────────────────────────────────────────────
+
+  async _extractGhostMemory(conv) {
+    const transcript = conv.messages
+      .map(m => `${m.role === 'user' ? 'Person' : 'Then'}: ${m.content}`)
+      .join('\n\n');
+    const messages = [{ role: 'user', content: `Conversation:\n\n${transcript}` }];
+    try {
+      const full = await this._collectStream(messages, GHOST_PROMPT);
+      if (full.trim()) { this.s.ghost.push(full.trim()); this._save(); }
+    } catch(e) {}
+  },
+
+  // ── Notification System ───────────────────────────────────────────────────
+
+  async _extractNotifSeeds(conv) {
+    if (!this.s.apiKey || !this.s.notifyEnabled) return;
+    const transcript = conv.messages
+      .filter(m => m.role === 'user')
+      .map(m => m.content).join('\n\n');
+    if (!transcript.trim()) return;
+
+    try {
+      const raw = await this._collectStream(
+        [{ role: 'user', content: transcript }],
+        NOTIF_PROMPT
+      );
+      const jsonMatch = raw.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return;
+      const seeds = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(seeds) || !seeds.length) return;
+
+      const now = Date.now();
+      seeds.forEach(seed => {
+        if (!seed.text) return;
+        // Random delay: 6 to 72 hours
+        const delay = (6 + Math.random() * 66) * 3600000;
+        this.s.notifyPool.push({
+          id:     this._id(),
+          text:   seed.text,
+          fireAt: now + delay,
+        });
+      });
+
+      // Cap pool at 30 items, keep most recent
+      if (this.s.notifyPool.length > 30) {
+        this.s.notifyPool = this.s.notifyPool
+          .sort((a, b) => a.fireAt - b.fireAt)
+          .slice(-30);
+      }
+
+      this._save();
+      this._scheduleSW();
+    } catch(e) {}
+  },
+
+  _checkDueNotifications() {
+    const now   = Date.now();
+    const due   = this.s.notifyPool.filter(n => n.fireAt <= now);
+    const future = this.s.notifyPool.filter(n => n.fireAt > now);
+
+    if (due.length) {
+      // Show the first due notification, discard the rest
+      this._showInAppNotif(due[0].text);
+      this.s.notifyPool = future;
+      this._save();
+    }
+
+    // Re-check hourly while page is open
+    setTimeout(() => this._checkDueNotifications(), 3600000);
+  },
+
+  _scheduleSW() {
+    if (!this.s.sw || !this.s.notifyEnabled) return;
+    const now     = Date.now();
+    const upcoming = this.s.notifyPool
+      .filter(n => n.fireAt > now)
+      .sort((a, b) => a.fireAt - b.fireAt)
+      .slice(0, 10); // send next 10 to SW
+    this.s.sw.active && this.s.sw.active.postMessage({ type: 'SCHEDULE', items: upcoming });
+  },
+
+  _showInAppNotif(text) {
+    document.getElementById('notif-text').textContent = text;
+    const banner = document.getElementById('notif-banner');
+    banner.classList.add('show');
+    setTimeout(() => banner.classList.remove('show'), 7000);
+  },
+
+  async toggleNotifications() {
+    if (this.s.notifyEnabled) {
+      this.s.notifyEnabled = false;
+      this._updateNotifUI();
+      this._save();
+      this._swMessage({ type: 'CANCEL' });
+    } else {
+      if (!('Notification' in window)) {
+        alert('Your browser doesn\'t support notifications.');
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        alert('Permission denied. Enable notifications in your browser settings.');
+        return;
+      }
+      this.s.notifyEnabled = true;
+      this._updateNotifUI();
+      this._save();
+      // Extract seeds from existing unextracted conversations
+      this._extractPendingConvs();
+      setTimeout(() => this._checkDueNotifications(), 1000);
+    }
+  },
+
+  async _extractPendingConvs() {
+    const pending = this.s.convs.filter(c => !c.notifExtracted && c.messages.length >= 6);
+    for (const conv of pending.slice(0, 5)) { // max 5 at a time
+      await this._extractNotifSeeds(conv);
+      await new Promise(r => setTimeout(r, 800)); // small gap between calls
+    }
+  },
+
+  _updateNotifUI() {
+    const btn    = document.getElementById('s-notif-btn');
+    const status = document.getElementById('s-notif-status');
+    if (!btn || !status) return;
+    if (this.s.notifyEnabled) {
+      btn.textContent = 'Disable';
+      btn.classList.add('on');
+      status.textContent = 'On';
+    } else {
+      btn.textContent = 'Enable';
+      btn.classList.remove('on');
+      status.textContent = 'Off';
+    }
+  },
+
+  // ── Service Worker ────────────────────────────────────────────────────────
+
+  async _registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      this.s.sw = await navigator.serviceWorker.register('/sw.js');
+      navigator.serviceWorker.addEventListener('message', e => {
+        if (e.data.type === 'SHOW_NOTIFICATION') {
+          this._showInAppNotif(e.data.text);
+        }
+      });
+      this._scheduleSW(); // re-arm pool on every load
+    } catch(e) {}
+  },
+
+  _swMessage(msg) {
+    if (this.s.sw && this.s.sw.active) this.s.sw.active.postMessage(msg);
+  },
+
+  // ── Quote Reply ───────────────────────────────────────────────────────────
+
+  _bindSelectionReply() {
+    document.addEventListener('mouseup', () => setTimeout(() => this._handleSelection(), 30));
+    document.addEventListener('mousedown', e => {
+      if (e.target.id !== 'reply-btn') this._hideReplyBtn();
+    });
+  },
+
+  _handleSelection() {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) { this._hideReplyBtn(); return; }
+    const text = sel.toString().trim();
+    if (text.length < 4) { this._hideReplyBtn(); return; }
+
+    const range = sel.getRangeAt(0);
+    const node  = range.commonAncestorContainer;
+    const msgBody = (node.nodeType === 3 ? node.parentNode : node).closest('.msg-body');
+    if (!msgBody) { this._hideReplyBtn(); return; }
+
+    const rect = range.getBoundingClientRect();
+    const btn  = document.getElementById('reply-btn');
+    btn.style.left    = Math.max(8, rect.left + rect.width / 2 - 60) + 'px';
+    btn.style.top     = Math.max(8, rect.top - 42) + 'px';
+    btn.style.display = 'block';
+    this.s._selectedText = text;
+  },
+
+  _hideReplyBtn() {
+    document.getElementById('reply-btn').style.display = 'none';
+  },
+
+  _activateReply() {
+    const text = this.s._selectedText;
+    if (!text) return;
+    this._hideReplyBtn();
+    window.getSelection().removeAllRanges();
+    this.setQuote(text);
+  },
+
+  setQuote(text) {
+    this.s.quote = text;
+    const preview = text.length > 90 ? text.slice(0, 90) + '…' : text;
+    document.getElementById('quote-text').textContent = `"${preview}"`;
+    document.getElementById('quote-bar').classList.add('active');
+    document.getElementById('chat-input').focus();
+  },
+
+  clearQuote() {
+    this.s.quote = null;
+    this.s._selectedText = null;
+    document.getElementById('quote-bar').classList.remove('active');
+    document.getElementById('quote-text').textContent = '';
+  },
+
+  // ── Close Detection ───────────────────────────────────────────────────────
+
+  _isClosingResponse(text) {
+    const lower = text.toLowerCase();
+    const patterns = [
+      'you already know', "that's your answer", 'go do it',
+      "you don't need me", "you've got this", 'you know what to do',
+      'trust that', 'you have what you need', "you're ready",
+      'that settles it', 'there it is', 'you just answered',
+      'you told me yourself', 'go with that', 'go with it',
+      'the answer is already', 'make the call', 'make your move',
+      "that's it", 'nothing left to figure out'
+    ];
+    return patterns.some(p => lower.includes(p));
+  },
+
+  _appendCloseDivider() {
+    const el = document.createElement('div');
+    el.className = 'conv-close';
+    el.innerHTML = `<span class="conv-close-text">clarity reached</span>`;
+    document.getElementById('messages').appendChild(el);
+    this._scrollBottom();
+  },
+
+  // ── DOM helpers ───────────────────────────────────────────────────────────
+
+  _appendMsg(role, content, quote) {
+    const el = document.createElement('div');
+    el.className = `message ${role}`;
+    if (role === 'user') {
+      // Quote lives inside the bubble
+      const quoteHTML = quote
+        ? `<div class="msg-quote">"${this._esc(quote.slice(0, 120))}${quote.length > 120 ? '…' : ''}"</div>`
+        : '';
+      el.innerHTML = `<div class="msg-label">You</div><div class="msg-body">${quoteHTML}${this._fmt(content)}</div>`;
+    } else {
+      el.innerHTML = `<div class="msg-label">Then</div><div class="msg-body">${this._fmt(content)}</div>`;
+    }
+    document.getElementById('messages').appendChild(el);
+    return el;
+  },
+
+  _appendTyping() {
+    const el = document.createElement('div');
+    el.className = 'message assistant';
+    el.innerHTML = `
+      <div class="msg-label">Then</div>
+      <div class="thinking-sword">
+        <div class="thinking-sword-wrap">
+          <!-- Sword (tip down) — matches icon style -->
+          <svg class="thinking-sword-icon" viewBox="0 0 26 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Ring pommel -->
+            <circle cx="13" cy="4"   r="3.5" stroke="white" stroke-width="1.5" fill="#0a0a0a"/>
+            <circle cx="13" cy="4"   r="1"   stroke="white" stroke-width="1"   fill="#0a0a0a"/>
+            <!-- Grip collar -->
+            <rect x="11" y="7.5" width="4" height="2" rx="0.5" fill="white"/>
+            <!-- Grip (X-wrap simplified) -->
+            <rect x="10.5" y="9" width="5" height="12" rx="1" fill="white"/>
+            <line x1="10.5" y1="11.5" x2="15.5" y2="16"   stroke="#0a0a0a" stroke-width="1.2"/>
+            <line x1="15.5" y1="11.5" x2="10.5" y2="16"   stroke="#0a0a0a" stroke-width="1.2"/>
+            <line x1="10.5" y1="16"   x2="15.5" y2="20.5" stroke="#0a0a0a" stroke-width="1.2"/>
+            <line x1="15.5" y1="16"   x2="10.5" y2="20.5" stroke="#0a0a0a" stroke-width="1.2"/>
+            <!-- Crossguard (bracket style) -->
+            <path d="M2,21 L11,21 L11,26 L5,26 L5,29 L2,29 Z"   fill="white"/>
+            <path d="M15,21 L24,21 L24,29 L21,29 L21,26 L15,26 Z" fill="white"/>
+            <circle cx="4"  cy="25.5" r="1.5" fill="#0a0a0a"/>
+            <circle cx="22" cy="25.5" r="1.5" fill="#0a0a0a"/>
+            <!-- Blade (solid, tip at bottom) -->
+            <path d="M11,29 C10.5,36 10,43 13,51 C16,43 15.5,36 15,29 Z" fill="white"/>
+            <!-- Blade highlight -->
+            <path d="M13.5,30 C13.5,37 13.2,44 13,50" stroke="white" stroke-width="0.8" opacity="0.6" fill="none"/>
+          </svg>
+          <!-- Dragon-fire shockwave rings — fire on impact (at crossguard height) -->
+          <div class="thinking-ring"></div>
+          <div class="thinking-ring-2"></div>
+        </div>
+        <span class="thinking-label">Thinking</span>
+      </div>`;
+    document.getElementById('messages').appendChild(el);
+    return el;
+  },
+
+  _scrollBottom() {
+    const el = document.getElementById('messages');
+    el.scrollTop = el.scrollHeight;
+  },
+
+  // ── Utility: collect full stream response ─────────────────────────────────
+
+  async _collectStream(messages, system) {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': this.s.apiKey },
+      body: JSON.stringify({ messages, system }),
+    });
+    if (!res.ok) throw new Error('API error');
+    let full = '';
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+    outer: while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = dec.decode(value, { stream: true }).split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6);
+        if (payload === '[DONE]') break outer;
+        try { const p = JSON.parse(payload); if (p.text) full += p.text; } catch(e) {}
+      }
+    }
+    return full;
+  },
+
+  // ── Delete / PIN ──────────────────────────────────────────────────────────
+
+  _checkPinTrigger(text) {
+    if (!this.s.pin || this.s.pin.length !== 4) return false;
+    return text.includes(`_${this.s.pin}_`);
+  },
+
+  _getDeleteMessage() {
+    let pool = DELETE_MESSAGES.filter(m => !this.s.usedDeleteMsgs.includes(m));
+    if (!pool.length) { this.s.usedDeleteMsgs = []; pool = [...DELETE_MESSAGES]; }
+    const msg = pool[Math.floor(Math.random() * pool.length)];
+    this.s.usedDeleteMsgs.push(msg);
+    this._save();
+    return msg;
+  },
+
+  _showDeleteModal() {
+    if (!this.s.pin) { this.openSettings(); return; }
+    this.s.pendingDeleteId = this.s.activeId;
+    document.getElementById('delete-msg-text').textContent = this._getDeleteMessage();
+    document.getElementById('pin-status').textContent = '';
+    document.getElementById('pin-status').classList.remove('error-msg');
+    [0,1,2,3].forEach(i => { const e = document.getElementById(`pin-${i}`); e.value = ''; e.classList.remove('filled','error'); });
+    document.getElementById('delete-modal').classList.add('open');
+    setTimeout(() => document.getElementById('pin-0').focus(), 80);
+  },
+
+  cancelDelete() {
+    document.getElementById('delete-modal').classList.remove('open');
+    this.s.pendingDeleteId = null;
+  },
+
+  confirmDelete() {
+    const entered = [0,1,2,3].map(i => document.getElementById(`pin-${i}`).value).join('');
+    if (entered.length < 4) {
+      document.getElementById('pin-status').textContent = 'Enter all 4 digits.';
+      document.getElementById('pin-status').classList.add('error-msg');
+      return;
+    }
+    if (entered !== this.s.pin) {
+      [0,1,2,3].forEach(i => { const e = document.getElementById(`pin-${i}`); e.classList.add('error'); e.value = ''; setTimeout(() => e.classList.remove('error'), 400); });
+      document.getElementById('pin-status').textContent = 'Wrong PIN. Try again.';
+      document.getElementById('pin-status').classList.add('error-msg');
+      setTimeout(() => document.getElementById('pin-0').focus(), 50);
+      return;
+    }
+    const convId = this.s.pendingDeleteId;
+    const conv   = this.s.convs.find(c => c.id === convId);
+    document.getElementById('delete-modal').classList.remove('open');
+    this.s.pendingDeleteId = null;
+    this.s.convs = this.s.convs.filter(c => c.id !== convId);
+    if (this.s.activeId === convId) {
+      this.s.activeId = null;
+      this.s.convs.length ? this._showChat(this.s.convs[0]) : this.newChat();
+    }
+    this._save();
+    this._renderSidebar();
+    if (conv && conv.messages.length >= 2 && this.s.apiKey && !conv.ghostExtracted) {
+      this._extractGhostMemory(conv);
+    }
+  },
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+
+  openSettings() {
+    document.getElementById('s-key').value = this.s.apiKey;
+    document.getElementById('s-pin').value = this.s.pin;
+    document.getElementById('s-ctx').value = this.s.ctx;
+    this._updateNotifUI();
+    document.getElementById('settings-modal').classList.add('open');
+    setTimeout(() => document.getElementById('s-key').focus(), 100);
+  },
+
+  closeSettings() { document.getElementById('settings-modal').classList.remove('open'); },
+
+  settingsOverlayClick(e) {
+    if (e.target === document.getElementById('settings-modal')) this.closeSettings();
+  },
+
+  saveSettings() {
+    const pin = document.getElementById('s-pin').value.trim();
+    if (pin && (pin.length !== 4 || !/^\d{4}$/.test(pin))) {
+      document.getElementById('s-pin').style.borderColor = 'var(--danger)';
+      setTimeout(() => document.getElementById('s-pin').style.borderColor = '', 1200);
+      return;
+    }
+    this.s.apiKey = document.getElementById('s-key').value.trim();
+    this.s.pin    = pin;
+    this.s.ctx    = document.getElementById('s-ctx').value.trim();
+    this._save();
+    this.closeSettings();
+    this._renderSidebar();
+  },
+
+  // ── PIN input UX ──────────────────────────────────────────────────────────
+
+  _bindPinInputs() {
+    [0,1,2,3].forEach(i => {
+      const el = document.getElementById(`pin-${i}`);
+      el.addEventListener('input', () => {
+        const v = el.value.replace(/\D/g,'');
+        el.value = v.slice(0,1);
+        if (v) { el.classList.add('filled'); if (i < 3) document.getElementById(`pin-${i+1}`).focus(); }
+        else el.classList.remove('filled');
+        document.getElementById('pin-status').textContent = '';
+        document.getElementById('pin-status').classList.remove('error-msg');
+      });
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(`pin-${i-1}`).focus();
+        if (e.key === 'Enter') App.confirmDelete();
+      });
+    });
+  },
+
+  // ── Formatting ────────────────────────────────────────────────────────────
+
+  _fmt(text) {
+    if (!text) return '<p></p>';
+    let t = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g,'<em>$1</em>');
+    const paras = t.split(/\n\n+/).filter(p => p.trim());
+    return paras.length <= 1
+      ? `<p>${t.replace(/\n/g,'<br>')}</p>`
+      : paras.map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+  },
+
+  _esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; },
+
+  // ── Input binding ─────────────────────────────────────────────────────────
+
+  _bindInputs() {
+    const bind = (inputId, btnId, onEnter) => {
+      const input = document.getElementById(inputId);
+      const btn   = document.getElementById(btnId);
+      input.addEventListener('input', () => {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 180) + 'px';
+        input.value.trim() ? btn.classList.add('live') : btn.classList.remove('live');
+      });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEnter(); }
+      });
+    };
+    bind('empty-input', 'empty-send', () => this.startFromEmpty());
+    bind('chat-input',  'chat-send',  () => this.sendMessage());
+  },
+};
+
+App.init();
+</script>
+</body>
+</html>
