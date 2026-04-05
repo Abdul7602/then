@@ -74,6 +74,14 @@ http://localhost:3000
 
 ---
 
+## ⚡ Try It Instantly
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Abdul7602/then)
+
+Click the badge → GitHub spins up a VM in ~30 seconds → Then launches automatically in your browser → paste your Anthropic API key in Settings → you're in.
+
+> Get your free API key at [console.anthropic.com](https://console.anthropic.com)
+
 Once running, try these:
 
 - **Start a conversation** — type anything weighing on you and hit Enter
