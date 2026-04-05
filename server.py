@@ -306,7 +306,9 @@ class ThenHandler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
-    server = ThreadingHTTPServer(('localhost', port), ThenHandler)
+    # Bind to 0.0.0.0 so it works both locally and on cloud platforms
+    host = '0.0.0.0'
+    server = ThreadingHTTPServer((host, port), ThenHandler)
     print(f'\033[1mThen\033[0m is running → \033[4mhttp://localhost:{port}\033[0m')
     print('Press Ctrl+C to stop.\n')
     try:

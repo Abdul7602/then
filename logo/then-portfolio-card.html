@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 800px; overflow: hidden; }
+
+  body {
+    background: #0A0A0A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .card {
+    width: 1200px;
+    height: 800px;
+    background: #0A0A0A;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* Subtle radial glow behind sword */
+  .glow {
+    position: absolute;
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(74,222,128,0.055) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Very subtle grid texture */
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  /* Fade edges of grid */
+  .grid::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 30%, #0A0A0A 80%);
+  }
+
+  /* Corner marks */
+  .corner {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    opacity: 0.18;
+  }
+  .corner.tl { top: 36px; left: 36px; border-top: 1px solid #fff; border-left: 1px solid #fff; }
+  .corner.tr { top: 36px; right: 36px; border-top: 1px solid #fff; border-right: 1px solid #fff; }
+  .corner.bl { bottom: 36px; left: 36px; border-bottom: 1px solid #fff; border-left: 1px solid #fff; }
+  .corner.br { bottom: 36px; right: 36px; border-bottom: 1px solid #fff; border-right: 1px solid #fff; }
+
+  .content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    z-index: 10;
+  }
+
+  /* Sword SVG */
+  .sword-wrap {
+    margin-bottom: 36px;
+    filter: drop-shadow(0 0 32px rgba(74,222,128,0.18));
+  }
+
+  /* THEN wordmark */
+  .wordmark {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 108px;
+    letter-spacing: 28px;
+    color: #ffffff;
+    line-height: 1;
+    margin-left: 28px; /* compensate for letter-spacing on last char */
+    text-indent: 28px;
+  }
+
+  /* Thin divider */
+  .divider {
+    width: 1px;
+    height: 28px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.25), transparent);
+    margin: 22px 0;
+  }
+
+  /* Tagline */
+  .tagline {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    font-size: 14px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* Bottom label */
+  .bottom-label {
+    position: absolute;
+    bottom: 38px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    opacity: 0.22;
+  }
+  .bottom-line {
+    width: 48px;
+    height: 1px;
+    background: #fff;
+  }
+  .bottom-text {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #fff;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="grid"></div>
+  <div class="glow"></div>
+
+  <!-- Corner marks -->
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <div class="content">
+    <!-- Heraldic sword — tip DOWN, white, glowing -->
+    <div class="sword-wrap">
+      <svg width="64" height="110" viewBox="0 0 16 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Ring pommel: top -->
+        <circle cx="8" cy="2.2" r="1.85" stroke="white" stroke-width="1.3" fill="none"/>
+        <circle cx="8" cy="2.2" r="0.55" fill="white"/>
+        <!-- Collar -->
+        <rect x="6.4" y="4.3" width="3.2" height="0.9" rx="0.2" fill="white"/>
+        <!-- Grip -->
+        <rect x="6.9" y="5" width="2.2" height="4" rx="0.4" fill="white"/>
+        <!-- Crossguard: bracket arms -->
+        <path d="M0,9 L6.6,9 L6.6,11 L1.8,11 L1.8,12.5 L0,12.5 Z" fill="white"/>
+        <path d="M16,9 L9.4,9 L9.4,11 L14.2,11 L14.2,12.5 L16,12.5 Z" fill="white"/>
+        <!-- Blade: tip at bottom -->
+        <path d="M6.6,11 C6.3,15.5 6,20 8,26.5 C10,20 9.7,15.5 9.4,11 Z" fill="white"/>
+      </svg>
+    </div>
+
+    <div class="wordmark">THEN</div>
+    <div class="divider"></div>
+    <div class="tagline">A space for clarity</div>
+  </div>
+
+  <!-- Bottom label -->
+  <div class="bottom-label">
+    <div class="bottom-line"></div>
+    <div class="bottom-text">Personal wisdom companion</div>
+    <div class="bottom-line"></div>
+  </div>
+</div>
+</body>
+</html>
