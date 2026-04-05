@@ -358,7 +358,8 @@ class ThenHandler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
-    server = ThreadingHTTPServer(('localhost', port), ThenHandler)
+    host = '0.0.0.0' if os.environ.get('RENDER') else 'localhost'
+    server = ThreadingHTTPServer((host, port), ThenHandler)
     print('\033[1mThen\033[0m is running \u2192 http://localhost:' + str(port))
     print('Press Ctrl+C to stop.\n')
     try:

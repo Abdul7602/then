@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: then
+    runtime: python
+    buildCommand: echo "no build needed"
+    startCommand: python3 server.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: RENDER
+        value: true
