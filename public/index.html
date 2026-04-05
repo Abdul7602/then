@@ -937,8 +937,8 @@ const App = {
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
-  init() {
-    this._load();
+  async init() {
+    await this._load();
 
     // First launch — ask for name before anything else
     if (!this.s.name) {
@@ -993,7 +993,7 @@ const App = {
     const val = document.getElementById('name-input')?.value.trim();
     if (!val) return;
     this.s.name = val;
-    localStorage.setItem('then_name', val);
+    this._save();
 
     const ns = document.getElementById('name-screen');
     ns.classList.add('leaving');
@@ -1006,30 +1006,67 @@ const App = {
 
   // ── State ─────────────────────────────────────────────────────────────────
 
-  _load() {
-    this.s.name          = localStorage.getItem('then_name')        || '';
-    this.s.apiKey        = localStorage.getItem('then_key')         || '';
-    this.s.ctx           = localStorage.getItem('then_ctx')         || '';
-    this.s.pin           = localStorage.getItem('then_pin')         || '';
-    this.s.notifyEnabled = localStorage.getItem('then_notif') === 'true';
-    try { this.s.ghost          = JSON.parse(localStorage.getItem('then_ghost'))    || []; } catch(e) { this.s.ghost = []; }
-    try { this.s.usedDeleteMsgs = JSON.parse(localStorage.getItem('then_used_del'))|| []; } catch(e) { this.s.usedDeleteMsgs = []; }
-    try { this.s.convs          = JSON.parse(localStorage.getItem('then_convs'))    || []; } catch(e) { this.s.convs = []; }
-    try { this.s.notifyPool     = JSON.parse(localStorage.getItem('then_notify'))   || []; } catch(e) { this.s.notifyPool = []; }
-    this.s.activeId = localStorage.getItem('then_active') || null;
+  async _load() {
+    // API key + ctx stay in localStorage only (never written to disk)
+    this.s.apiKey = localStorage.getItem('then_key') || '';
+    this.s.ctx    = localStorage.getItem('then_ctx')  || '';
+
+    try {
+      const res  = await fetch('/api/state');
+      if (!res.ok) throw new Error('state fetch failed');
+      const data = await res.json();
+      this.s.name           = data.name           || '';
+      this.s.pin            = data.pin            || '';
+      this.s.notifyEnabled  = data.notifyEnabled  || false;
+      this.s.ghost          = Array.isArray(data.ghost)          ? data.ghost          : [];
+      this.s.usedDeleteMsgs = Array.isArray(data.usedDeleteMsgs) ? data.usedDeleteMsgs : [];
+      this.s.convs          = Array.isArray(data.convs)          ? data.convs          : [];
+      this.s.notifyPool     = Array.isArray(data.notifyPool)     ? data.notifyPool     : [];
+      this.s.activeId       = data.activeId || null;
+    } catch(e) {
+      // Fallback: read from localStorage if server is unreachable
+      this.s.name          = localStorage.getItem('then_name')       || '';
+      this.s.pin           = localStorage.getItem('then_pin')        || '';
+      this.s.notifyEnabled = localStorage.getItem('then_notif') === 'true';
+      try { this.s.ghost          = JSON.parse(localStorage.getItem('then_ghost'))    || []; } catch(_) { this.s.ghost = []; }
+      try { this.s.usedDeleteMsgs = JSON.parse(localStorage.getItem('then_used_del'))|| []; } catch(_) { this.s.usedDeleteMsgs = []; }
+      try { this.s.convs          = JSON.parse(localStorage.getItem('then_convs'))    || []; } catch(_) { this.s.convs = []; }
+      try { this.s.notifyPool     = JSON.parse(localStorage.getItem('then_notify'))   || []; } catch(_) { this.s.notifyPool = []; }
+      this.s.activeId = localStorage.getItem('then_active') || null;
+    }
   },
 
   _save() {
-    localStorage.setItem('then_name',      this.s.name);
-    localStorage.setItem('then_key',       this.s.apiKey);
-    localStorage.setItem('then_ctx',       this.s.ctx);
-    localStorage.setItem('then_pin',       this.s.pin);
-    localStorage.setItem('then_notif',     String(this.s.notifyEnabled));
-    localStorage.setItem('then_ghost',     JSON.stringify(this.s.ghost));
-    localStorage.setItem('then_used_del',  JSON.stringify(this.s.usedDeleteMsgs));
-    localStorage.setItem('then_convs',     JSON.stringify(this.s.convs));
-    localStorage.setItem('then_notify',    JSON.stringify(this.s.notifyPool));
-    localStorage.setItem('then_active',    this.s.activeId || '');
+    // Sensitive keys: localStorage only
+    localStorage.setItem('then_key', this.s.apiKey);
+    localStorage.setItem('then_ctx', this.s.ctx);
+
+    // Everything else: server file (fire-and-forget)
+    const payload = {
+      name:           this.s.name,
+      pin:            this.s.pin,
+      notifyEnabled:  this.s.notifyEnabled,
+      ghost:          this.s.ghost,
+      usedDeleteMsgs: this.s.usedDeleteMsgs,
+      convs:          this.s.convs,
+      notifyPool:     this.s.notifyPool,
+      activeId:       this.s.activeId,
+    };
+    fetch('/api/state', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    }).catch(() => {
+      // Fallback: mirror to localStorage if server write fails
+      localStorage.setItem('then_name',     this.s.name);
+      localStorage.setItem('then_pin',      this.s.pin);
+      localStorage.setItem('then_notif',    String(this.s.notifyEnabled));
+      localStorage.setItem('then_ghost',    JSON.stringify(this.s.ghost));
+      localStorage.setItem('then_used_del', JSON.stringify(this.s.usedDeleteMsgs));
+      localStorage.setItem('then_convs',    JSON.stringify(this.s.convs));
+      localStorage.setItem('then_notify',   JSON.stringify(this.s.notifyPool));
+      localStorage.setItem('then_active',   this.s.activeId || '');
+    });
   },
 
   _id() { return Date.now().toString(36) + Math.random().toString(36).slice(2); },

@@ -12,6 +12,8 @@ import os
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 PUBLIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public')
+DATA_DIR   = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+STATE_FILE = os.path.join(DATA_DIR, 'state.json')
 
 
 class ThenHandler(SimpleHTTPRequestHandler):
@@ -24,12 +26,62 @@ class ThenHandler(SimpleHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
+    def do_GET(self):
+        if self.path == '/api/state':
+            self._handle_state_get()
+        else:
+            # Serve static files from public/
+            super().do_GET()
+
     def do_POST(self):
         if self.path == '/api/chat':
             self._handle_chat()
+        elif self.path == '/api/state':
+            self._handle_state_post()
         else:
             self.send_response(404)
             self.end_headers()
+
+    # ── State persistence ─────────────────────────────────────────────────────
+
+    def _handle_state_get(self):
+        try:
+            if os.path.exists(STATE_FILE):
+                with open(STATE_FILE, 'r', encoding='utf-8') as f:
+                    data = f.read()
+            else:
+                data = '{}'
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self._cors()
+            self.end_headers()
+            self.wfile.write(data.encode('utf-8'))
+        except Exception as e:
+            self._error(500, f'Could not read state: {e}')
+
+    def _handle_state_post(self):
+        length = int(self.headers.get('Content-Length', 0))
+        if not length:
+            self._error(400, 'Empty body.')
+            return
+        try:
+            raw = self.rfile.read(length)
+            # Validate it's real JSON before saving
+            json.loads(raw)
+        except Exception:
+            self._error(400, 'Invalid JSON.')
+            return
+        try:
+            os.makedirs(DATA_DIR, exist_ok=True)
+            with open(STATE_FILE, 'w', encoding='utf-8') as f:
+                f.write(raw.decode('utf-8'))
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self._cors()
+            self.end_headers()
+            self.wfile.write(b'{"ok":true}')
+        except Exception as e:
+            self._error(500, f'Could not write state: {e}')
 
     # ── Main handler ─────────────────────────────────────────────────────────
 
