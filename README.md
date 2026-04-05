@@ -74,6 +74,14 @@ http://localhost:3000
 
 ---
 
+## ⚡ Try it Live
+Visit the live demo → **[then.up.railway.app](https://then.up.railway.app)**
+Bring your own Anthropic API key — add it in Settings after opening.
+
+## 🖥️ Run Locally (One Click)
+**Windows:** double-click `start.bat`
+**Mac/Linux:** run `./start.sh` in terminal
+Your browser opens automatically.
 ## 🧪 Testing It Out
 
 Once running, try these:
