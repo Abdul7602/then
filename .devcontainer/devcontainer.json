@@ -1,0 +1,15 @@
+{
+  "name": "Then",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "postStartCommand": "python server.py",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Then App",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "remoteEnv": {
+    "PORT": "3000"
+  }
+}
