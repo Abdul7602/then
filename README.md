@@ -74,6 +74,20 @@ http://localhost:3000
 
 ---
 
+---
+
+## 🌐 Live Demo
+
+**[then.onrender.com](https://then.onrender.com)**
+
+Open the link, paste your API key in Settings, and start. No install, no sign-up.
+
+> Supports Groq (free) and Anthropic (paid). Free key at [console.groq.com](https://console.groq.com)
+
+> **Note:** First load after inactivity takes ~30 seconds — Render's free tier spins down idle services.
+
+> ⚠️ **Deployment note:** Then runs on Python only. If self-hosting, set your start command to `python3 server.py` — not `node server.js`.
+
 ## ⚡ Try It Instantly
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Abdul7602/then)
