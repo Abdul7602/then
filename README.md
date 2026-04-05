@@ -75,7 +75,7 @@ http://localhost:3000
 ---
 
 ## ⚡ Try it Live
-Visit the live demo → **[then.up.railway.app](https://then.up.railway.app)**
+Visit the live demo → **[then.up.railway.app]([https://then.up.railway.app](https://web-production-381af.up.railway.app/))**  
 Bring your own Anthropic API key — add it in Settings after opening.
 
 ## 🖥️ Run Locally (One Click)
